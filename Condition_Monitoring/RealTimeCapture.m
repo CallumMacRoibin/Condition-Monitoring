@@ -111,7 +111,54 @@ if exist(dataFilePath, 'file')
 else
     error('The specified .mat file does not exist: %s', dataFilePath);
 end
+%% Fault Prediction
+% Path to the Temp_Scalogram folder
+scalogramFolder = fullfile(pwd, 'Temp_Scalogram');
 
+% Load the trained CNN
+modelPath = fullfile(pwd, 'trainedCNN.mat');
+if exist(modelPath, 'file')
+    loadedModel = load(modelPath);
+    if isfield(loadedModel, 'net') % 'net' contains the trained CNN
+        trainedCNN = loadedModel.net; % Load the CNN into a variable
+    else
+        error('The .mat file does not contain a valid trained CNN model.');
+    end
+else
+    error('The trained CNN file does not exist at %s.', modelPath);
+end
+
+% Get the most recently saved scalogram image
+imageFiles = dir(fullfile(scalogramFolder, '*.jpg'));
+if isempty(imageFiles)
+    error('No scalogram images found in %s.', scalogramFolder);
+end
+
+% Sort files by modification date and select the latest
+[~, idx] = max([imageFiles.datenum]);
+latestScalogram = fullfile(scalogramFolder, imageFiles(idx).name);
+
+% Read and preprocess the image
+try
+    img = imread(latestScalogram);
+    % Resize the image to match the input size of the CNN
+    img = imresize(img, [227, 227]); % Example size, adjust to your CNN's input size
+
+    % Convert to single precision if required
+    if isa(trainedCNN.Layers(1), 'nnet.cnn.layer.ImageInputLayer')
+        img = single(img);
+    end
+
+    % Predict the class using the CNN
+    [predictedLabel, scores] = classify(trainedCNN, img);
+
+    % Display the results
+    fprintf('Predicted Fault Class: %s\n', string(predictedLabel));
+    fprintf('Confidence Score: %.2f%%\n', max(scores) * 100);
+
+catch ME
+    error('Error processing or classifying the image: %s', ME.message);
+end
 %% Callback
 function recordVibrationDataCallback(button)
     % Wrapper to call the separate record function
