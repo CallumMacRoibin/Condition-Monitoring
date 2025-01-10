@@ -103,13 +103,34 @@ else
     error('The specified .mat file does not exist: %s', dataFilePath);
 end
 
-%% Callback Wrapper
+%% Callback
 function recordVibrationDataCallback(button)
     % Wrapper to call the separate record function
     sampleRate = button.UserData.sampleRate;
     scalogramFolder = button.UserData.scalogramFolder;
-    currentData = button.UserData.currentData;
+    vibrationData = button.UserData.currentData; % Use vibrationData to match the function
+
+    % Apply bandpass filter to the captured data
+    try
+        filteredData = bandpassfiltering(vibrationData, sampleRate); % Pass as vibrationData
+        fprintf('Bandpass filtering applied to captured data.\n');
+    catch ME
+        warning('Error applying bandpass filter: %s', ME.message);
+        filteredData = vibrationData; % Use unfiltered data as fallback
+    end
+
+    % Generate a timestamped file name with a proper extension
+    timestamp = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
+    scalogramFile = fullfile(scalogramFolder, ['Scalogram_' timestamp '.jpg']);
 
     % Call the function in the Functions folder
-    recordVibrationData(sampleRate, currentData, scalogramFolder);
+    try
+        recordVibrationData(sampleRate, filteredData, scalogramFile);
+    catch ME
+        warning('Error generating scalogram: %s', ME.message);
+    end
 end
+
+
+
+

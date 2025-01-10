@@ -15,7 +15,10 @@ function filtered_signal = bandpassfiltering(vibrationData, samplingRate)
     end
 
     % Parameters for the bandpass filter
-    kurtogram_level = 9;  % Level used in the Kurtogram
+    % kurtogram_level = 9;  % Level used in the Kurtogram
+    % Ensure the level does not exceed the maximum allowed for the data length
+    maxLevel = floor(log2(length(vibrationData))); % Maximum level for current data length
+    kurtogram_level = min(9, maxLevel); % Cap level at 9 or the max possible level
     filterOrder = 200;    % Order of the bandpass FIR filter
     
     % Compute the Kurtogram and extract central frequency (FC) and bandwidth (BW)
