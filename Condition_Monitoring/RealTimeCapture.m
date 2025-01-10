@@ -59,8 +59,13 @@ if exist(dataFilePath, 'file')
                 totalSamples = length(vibrationalData);
                 numFrames = ceil(totalSamples / frameSize);
                 timeStep = 1 / sampleRate;
-                currentTime = []; % Initialize time array
-                currentData = []; % Initialize amplitude data array
+
+                % Preallocate arrays based on totalSamples
+                currentTime = nan(1, totalSamples); % Preallocate with NaN
+                currentData = nan(1, totalSamples); % Preallocate with NaN
+
+                % Index tracker for appending data
+                currentIndex = 0;
 
                 % Simulate real-time plotting
                 fprintf('Playing and plotting vibrational data in real-time...\n');
@@ -71,19 +76,23 @@ if exist(dataFilePath, 'file')
                     newTime = ((startIdx:endIdx) - 1) * timeStep;
                     newData = vibrationalData(startIdx:endIdx);
 
-                    % Append new data
-                    currentTime = [currentTime, newTime(:)']; % Ensure row vector
-                    currentData = [currentData, newData(:)']; % Ensure row vector
+                    % Append new data by assigning directly to preallocated arrays
+                    numNewSamples = length(newTime);
+                    currentTime(currentIndex + 1:currentIndex + numNewSamples) = newTime;
+                    currentData(currentIndex + 1:currentIndex + numNewSamples) = newData;
+
+                    % Update the current index
+                    currentIndex = currentIndex + numNewSamples;
 
                     % Update plot
-                    set(hPlot, 'XData', currentTime, 'YData', currentData);
+                    set(hPlot, 'XData', currentTime(1:currentIndex), 'YData', currentData(1:currentIndex));
 
                     % Update the button's UserData with the latest currentData
-                    btn.UserData.currentData = currentData;
+                    btn.UserData.currentData = currentData(1:currentIndex);
 
                     % Adjust x-axis dynamically
-                    if currentTime(end) > 10
-                        xlim([currentTime(end) - 10, currentTime(end)]);
+                    if currentTime(currentIndex) > 10
+                        xlim([currentTime(currentIndex) - 10, currentTime(currentIndex)]);
                     end
 
                     % Pause to simulate real-time playback
@@ -115,22 +124,18 @@ function recordVibrationDataCallback(button)
         filteredData = bandpassfiltering(vibrationData, sampleRate); % Pass as vibrationData
         fprintf('Bandpass filtering applied to captured data.\n');
     catch ME
-        warning('Error applying bandpass filter: %s', ME.message);
+        warning(ME.identifier, 'Error applying bandpass filter: %s', ME.message);
         filteredData = vibrationData; % Use unfiltered data as fallback
     end
 
     % Generate a timestamped file name with a proper extension
-    timestamp = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
+    timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
     scalogramFile = fullfile(scalogramFolder, ['Scalogram_' timestamp '.jpg']);
 
     % Call the function in the Functions folder
     try
         recordVibrationData(sampleRate, filteredData, scalogramFile);
     catch ME
-        warning('Error generating scalogram: %s', ME.message);
+        warning(ME.identifier, 'Error generating scalogram: %s', ME.message);
     end
 end
-
-
-
-
